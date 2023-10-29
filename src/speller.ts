@@ -1,28 +1,21 @@
-export default {
-	check,
-	lookup,
-};
-
 /** @private */
 const elements: Readonly<PeriodicTableElement[]> = require("./periodic-table.json");
 /** @private */
-const symbolElementMap = new Map<string, Readonly<PeriodicTableElement>>();
-
-init();
-
-/** @private */
-function init() {
-	for (const elem of elements) {
-		symbolElementMap.set(elem.symbol.toLowerCase(), elem);
-	}
-}
+const symbolElementMap = elements.reduce(
+	(m, elem) => {
+		m.set(elem.symbol.toLowerCase(), elem); 
+		return m;
+	}, 
+	new Map<string, Readonly<PeriodicTableElement>>()
+);
+const allSymbols: readonly string[] = Array.from(symbolElementMap.keys());
 
 /** Determine if `inputWord` can be spelled
 	* with periodic table symbols; return array with
-	* them if so (empty array otherwise)
-	*/
-function check(inputWord: string): readonly string[] {
-	if (!inputWord?.length) return [];
+	* them if so (empty array otherwise) */
+function check(inputWord: string): Readonly<SpellingResult> {
+	if (!inputWord?.length) 
+		return { symbols: [], match: 'none' };
 
 	const out: string[] = [];
 	const symCandidates = collectSymbolCandidates(inputWord);
@@ -44,7 +37,15 @@ function check(inputWord: string): readonly string[] {
 		return results;
 	}
 
-	return recurse(inputWord, out);
+	recurse(inputWord, out);
+
+	const resultCharLength = out.reduce((l,x) => l + x.length, 0);
+
+	let match: SpellingMatch = 'partial';
+	if (resultCharLength === 0) match = 'none';
+	else if (resultCharLength === inputWord.length) match = 'full';
+
+	return { symbols: out, match }
 }
 
 function lookup(elementSymbol: string) {
@@ -55,29 +56,31 @@ function lookup(elementSymbol: string) {
 function collectSymbolCandidates(inputWord: string): readonly string[] {
 	if (!inputWord?.length) return [];
 
-	// use array because ordering need to be preserved
-	const oneLetterSymbols = [] as string[];
-	const twoLetterSymbols = [] as string[];
+	const oneLetterSymbols = new Set<string>();
+	const twoLetterSymbols = new Set<string>();
 
 	for (const chr of inputWord.toLocaleLowerCase()) {
-		if (symbolElementMap.has(chr)
-			&& !oneLetterSymbols.includes(chr)) {
-			oneLetterSymbols.push(chr);
+		if (symbolElementMap.has(chr) && !oneLetterSymbols.has(chr)) {
+			oneLetterSymbols.add(chr);
 		}
 	}
 
 	for (let i = 0; i < inputWord.length - 1; i++) {
 		const sym = inputWord.slice(i, i + 2)?.toLocaleLowerCase();
-		if (Boolean(sym)
-			&& symbolElementMap.has(sym)
-			&& !twoLetterSymbols.includes(sym)) {
-			twoLetterSymbols.push(sym);
+		if (Boolean(sym) && symbolElementMap.has(sym) && !twoLetterSymbols.has(sym)) {
+			twoLetterSymbols.add(sym);
 		}
 	}
 
 	const syms = [...twoLetterSymbols, ...oneLetterSymbols];
 	return syms;
 }
+
+export default {
+	check,
+	lookup,
+	allSymbols
+};
 
 // TEST WORDS
 //

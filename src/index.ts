@@ -1,42 +1,62 @@
 import { Subscription } from "rxjs";
 import { wordSpelling$, invalidWordInputMessage$ } from "./app";
-import Speller from "./speller.js";
+import Speller from "./speller";
 
 /** @private */
 const wordSpellingEl = document.getElementById("word-spelling")!;
 /** @private */
-let inputWordSub: Subscription; 
+const wordSpellingMatchEl = document.getElementById("word-spelling-match")!;
+/** @private */
+let invalidInputWordSub: Subscription; 
 /** @private */
 let wordSpellingSub: Subscription;
 
 if (/complete|interactive|loaded/.test(document.readyState)) {
-	load();
+	init();
 }
 else {
-	document.addEventListener("DOMContentLoaded", load);
+	document.addEventListener("DOMContentLoaded", init);
 }
 document.addEventListener("unload", () => {
-  inputWordSub?.unsubscribe();
+  invalidInputWordSub?.unsubscribe();
   wordSpellingSub?.unsubscribe();
 });
 
-function load() {
-  inputWordSub = invalidWordInputMessage$.subscribe(msg => {
+function init() {
+  renderSymbols(Speller.allSymbols);
+
+  invalidInputWordSub = invalidWordInputMessage$.subscribe(msg => {
+    wordSpellingMatchEl.innerHTML = "";
     wordSpellingEl.innerHTML = `<strong>${msg}</strong>`
   });
 
   wordSpellingSub = wordSpelling$.subscribe(res => {
     res.match({
-      ok: (val) => renderSymbolCards(val),
-      err: (val) => wordSpellingEl.innerHTML = `<strong>-- ${val} --</strong>`
+      ok: (val) => renderSpellingResult(val),
+      err: (val) => wordSpellingEl.innerHTML = `<span><strong>-- ${val} --</strong></span>`
     })
   });
 }
 
 /** @private */
-function renderSymbolCards(symbols: readonly string[]) {
-  wordSpellingEl.innerHTML = "";
+function renderSpellingResult(spellingResult: SpellingResult) {
+  console.assert(Boolean(spellingResult));
+  const { symbols, match } = spellingResult; 
 
+  wordSpellingMatchEl.innerHTML = "";
+  if (match === 'full') {
+    wordSpellingMatchEl.innerHTML = `<span class="text-lime-800">full match</span>`;
+  }
+  else if (match === 'partial') {
+    wordSpellingMatchEl.innerHTML = `<span class="text-amber-600">partial match</span>`;
+  }
+
+  renderSymbols(symbols);
+}
+
+/** @private */
+function renderSymbols(symbols: readonly string[]) {
+  wordSpellingEl.innerHTML = "";
   for (const symbol of symbols) {
     const elementEntry = Speller.lookup(symbol)!;
     const elementDiv = document.createElement("div");
