@@ -4,7 +4,7 @@
   "type": "module",
   "scripts": {
     "build:dev": "rm -rf ./dist && bun build ./src/index.ts --outdir dist --target browser --watch",
-    "build:prod": "rm -rf ./dist && mkdir -p ./dist/assets && cp -r ./assets ./dist/assets && sed 's@dist/index.js@index.js@g' index.html > ./dist/index.html && bun build ./src/index.ts --outdir dist --target browser --minify"
+    "build:prod": "rm -rf ./dist && mkdir -p ./dist/assets && cp -r ./assets ./dist && sed 's@dist/index.js@index.js@g' index.html > ./dist/index.html && bun build ./src/index.ts --outdir dist --target browser --minify"
   },
   "devDependencies": {
     "bun-types": "latest",
