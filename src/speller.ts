@@ -1,71 +1,82 @@
-import Speller from "./speller.js";
+export default {
+	check,
+	lookup,
+};
 
+/** @private */
+const elements: Readonly<PeriodicTableElement[]> = require("./periodic-table.json");
+/** @private */
+const symbolElementMap = new Map<string, Readonly<PeriodicTableElement>>();
 
-if (/complete|interactive|loaded/.test(document.readyState)) {
-	ready();
+init();
+
+/** @private */
+function init() {
+	for (const elem of elements) {
+		symbolElementMap.set(elem.symbol.toLowerCase(), elem);
+	}
 }
-else {
-	document.addEventListener("DOMContentLoaded",ready);
+
+/** Determine if `inputWord` can be spelled
+	* with periodic table symbols; return array with
+	* them if so (empty array otherwise)
+	*/
+function check(inputWord: string): readonly string[] {
+	if (!inputWord?.length) return [];
+
+	const out: string[] = [];
+	const symCandidates = collectSymbolCandidates(inputWord);
+
+	const recurse = function (word: string, results: string[]): string[] {
+		if (!word?.length) return results;
+
+		for (const sym of symCandidates) {
+			const wordhead = word.slice(0, sym.length).toLowerCase();
+			if (wordhead !== sym)
+				continue;
+
+			results.push(sym);
+
+			const wordtail = word.slice(sym.length).toLowerCase();
+			return Boolean(wordtail?.length) ? recurse(wordtail, results) : results;
+		}
+
+		return results;
+	}
+
+	return recurse(inputWord, out);
 }
 
+function lookup(elementSymbol: string) {
+	return symbolElementMap.get(elementSymbol?.toLowerCase());
+}
 
-// ****************************
+/** @private */
+function collectSymbolCandidates(inputWord: string): readonly string[] {
+	if (!inputWord?.length) return [];
 
-function ready(){
-	var enterWordEl = document.getElementById("enter-word");
-	var spellBtn = document.getElementById("spell-btn");
-	var wordSpellingEl = document.getElementById("word-spelling");
+	// use array because ordering need to be preserved
+	const oneLetterSymbols = [] as string[];
+	const twoLetterSymbols = [] as string[];
 
-	enterWordEl.addEventListener("keydown",onKeydown,false);
-	spellBtn.addEventListener("click",checkWord,false);
-
-
-	// ********************************
-
-	function onKeydown(evt) {
-		if (evt.key == "Enter") {
-			checkWord();
+	for (const chr of inputWord.toLocaleLowerCase()) {
+		if (symbolElementMap.has(chr)
+			&& !oneLetterSymbols.includes(chr)) {
+			oneLetterSymbols.push(chr);
 		}
 	}
 
-	function checkWord() {
-		var inputWord = enterWordEl.value.toLowerCase().trim();
-		enterWordEl.value = inputWord;
-
-		// validate the input
-		if (!/^[a-z]{3,}$/.test(inputWord)) {
-			alert("Enter a word at least 3 letters long!");
-			return;
-		}
-
-		// attempt to spell word
-		var symbols = Speller.check(inputWord);
-
-		// was a valid spelling found?
-		if (symbols.length > 0) {
-			enterWordEl.value = "";
-			spellWord(symbols);
-		}
-		else {
-			wordSpellingEl.innerHTML = "<strong>-- couldn't spell it! --</strong>";
+	for (let i = 0; i < inputWord.length - 1; i++) {
+		const sym = inputWord.slice(i, i + 2)?.toLocaleLowerCase();
+		if (Boolean(sym)
+			&& symbolElementMap.has(sym)
+			&& !twoLetterSymbols.includes(sym)) {
+			twoLetterSymbols.push(sym);
 		}
 	}
 
-	function spellWord(symbols) {
-		wordSpellingEl.innerHTML = "";
-
-		for (let symbol of symbols) {
-			let elementEntry = Speller.lookup(symbol);
-			let elementDiv = document.createElement("div");
-			elementDiv.className = "element";
-			elementDiv.innerHTML = `
-				<div class="number">${elementEntry.number}</div>
-				<div class="symbol">${elementEntry.symbol}</div>
-				<div class="name">${elementEntry.name}</div>
-			`;
-			wordSpellingEl.appendChild(elementDiv);
-		}
-	}
+	const syms = [...twoLetterSymbols, ...oneLetterSymbols];
+	return syms;
 }
 
 // TEST WORDS
